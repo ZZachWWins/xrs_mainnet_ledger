@@ -1,0 +1,49 @@
+# Build artifacts
+build/
+bin/
+obj/
+*.o
+*.d
+*.elf
+*.hex
+*.map
+*.bin
+
+# Ledger SDK
+debug/
+dep/
+
+# Node.js
+node_modules/
+dist/
+*.tgz
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# Coverage
+coverage/
+*.lcov
+htmlcov/
+
+# Test artifacts
+snapshots-tmp/
+tests/fuzzing/findings/
+tests/fuzzing/corpus/
+tests/unit/test_runner
+venv/
+.env

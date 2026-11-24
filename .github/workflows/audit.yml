@@ -1,0 +1,83 @@
+name: Security Audit
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'
+
+jobs:
+  static-analysis:
+    name: Static Analysis (C)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install cppcheck
+        run: sudo apt-get update && sudo apt-get install -y cppcheck
+
+      - name: Run cppcheck
+        run: |
+          cppcheck \
+            --enable=all \
+            --error-exitcode=1 \
+            --suppress=missingIncludeSystem \
+            --suppress=unusedFunction \
+            --inline-suppr \
+            -I app/src \
+            app/src/
+
+      - name: Check for dangerous functions
+        run: |
+          echo "Checking for banned functions..."
+          BANNED="strcpy\|strcat\|sprintf\|gets\|scanf\|atoi\|atol\|atof"
+          if grep -rn "$BANNED" app/src/ --include='*.c' --include='*.h'; then
+            echo "ERROR: Banned unsafe functions found. Use safe alternatives."
+            exit 1
+          fi
+          echo "No banned functions found."
+
+      - name: Check for buffer overflow patterns
+        run: |
+          echo "Checking for potential buffer overflow patterns..."
+          if grep -rn 'memcpy.*sizeof' app/src/ --include='*.c' | grep -v 'MIN\|min\|safe'; then
+            echo "WARNING: Review memcpy calls for correct size bounds."
+          fi
+          echo "Buffer overflow check complete."
+
+  npm-audit:
+    name: NPM Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install and audit
+        run: |
+          cd client
+          npm ci
+          npm audit --audit-level=high
+
+  secret-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Scan for secrets
+        run: |
+          echo "Scanning for potential secrets..."
+          PATTERNS="private.key\|secret\|password\|api_key\|token.*=.*['\"]"
+          if grep -rni "$PATTERNS" --include='*.c' --include='*.h' --include='*.ts' --include='*.json' \
+            --exclude-dir=node_modules --exclude-dir=.git . | grep -v 'test\|example\|TODO\|FIXME\|mock'; then
+            echo "WARNING: Potential secrets found. Review the above matches."
+            exit 1
+          fi
+          echo "No secrets detected."

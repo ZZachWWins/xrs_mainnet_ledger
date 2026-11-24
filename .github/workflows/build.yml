@@ -1,0 +1,91 @@
+name: Build
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-app:
+    name: Build Ledger App (${{ matrix.device }})
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
+    strategy:
+      matrix:
+        include:
+          - device: nanos
+            sdk: $NANOS_SDK
+          - device: nanox
+            sdk: $NANOX_SDK
+          - device: nanosp
+            sdk: $NANOSP_SDK
+          - device: stax
+            sdk: $STAX_SDK
+          - device: flex
+            sdk: $FLEX_SDK
+      fail-fast: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          cd app
+          make BOLOS_SDK=${{ matrix.sdk }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xeris-app-${{ matrix.device }}
+          path: app/bin/
+
+  build-client:
+    name: Build Client Library
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        run: cd client && npm ci
+
+      - name: Build
+        run: cd client && npm run build
+
+      - name: Test
+        run: cd client && npm test
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check C formatting
+        run: |
+          sudo apt-get update && sudo apt-get install -y clang-format
+          find app/src -name '*.c' -o -name '*.h' | xargs clang-format --dry-run --Werror
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Lint TypeScript
+        run: |
+          cd client
+          npm ci
+          npx eslint src/

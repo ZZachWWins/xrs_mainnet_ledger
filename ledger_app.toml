@@ -1,0 +1,17 @@
+[app]
+build_directory = "app"
+sdk = "C"
+devices = ["nanos", "nanox", "nanosp", "stax", "flex"]
+
+[app.xeris]
+name = "Xeris"
+coin = "XRS"
+curve = "ed25519"
+path = "44'/9000'"
+
+[tests]
+unit_directory = "tests/unit"
+pytest_directory = "tests/functional"
+
+[tests.dependencies]
+testing_image = "ghcr.io/ledgerhq/ledger-app-builder/ledger-app-dev-tools:latest"
